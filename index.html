@@ -44,23 +44,22 @@
     <script>
         let map = L.map('map').setView([60.1699, 24.9384], 10);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        let users = [];
+        let users = {};
         let messages = {};
-        let currentUser = null;
-        let userMarker = null;
+        let currentUser = { marker: null };
         
         function updateUserLocation(position) {
             let lat = position.coords.latitude;
             let lon = position.coords.longitude;
             currentUser.lat = lat;
             currentUser.lon = lon;
-            if (userMarker) {
-                userMarker.setLatLng([lat, lon]);
+            if (currentUser.marker) {
+                currentUser.marker.setLatLng([lat, lon]);
             } else {
-                userMarker = L.marker([lat, lon], {
+                currentUser.marker = L.marker([lat, lon], {
                     icon: L.divIcon({
                         className: 'custom-pin',
-                        html: `<div style='background:#ffcc00;border-radius:50%;width:50px;height:50px;text-align:center;line-height:50px;'><img src='${currentUser.pic}' width='40' style='border-radius:50%;'></div>`
+                        html: `<div style='background:#ffcc00;border-radius:50%;width:50px;height:50px;text-align:center;line-height:50px;'><img src='${currentUser.pic || ''}' width='40' style='border-radius:50%;'></div>`
                     })
                 }).addTo(map);
             }
@@ -82,15 +81,14 @@
             }
             currentUser.name = name;
             currentUser.desc = desc;
-            users = users.filter(u => u.name !== name);
-            users.push(currentUser);
+            users[name] = currentUser;
             updateProfileList();
         }
 
         function updateProfileList() {
             let profileList = document.getElementById('profileList');
             profileList.innerHTML = '';
-            users.forEach(user => {
+            Object.values(users).forEach(user => {
                 let div = document.createElement('div');
                 div.className = 'profile';
                 div.innerHTML = `<b>${user.name}</b><br><img src="${user.pic}" width="50" style="border-radius:50%;"><br>${user.desc}`;
@@ -100,7 +98,7 @@
         
         function searchUsers() {
             let query = document.getElementById('searchUser').value.toLowerCase();
-            let filteredUsers = users.filter(u => u.name.toLowerCase().includes(query));
+            let filteredUsers = Object.values(users).filter(u => u.name.toLowerCase().includes(query));
             let userList = document.getElementById('userList');
             userList.innerHTML = '';
             filteredUsers.forEach(user => {
@@ -112,7 +110,7 @@
         }
 
         function viewProfile(name) {
-            let user = users.find(u => u.name === name);
+            let user = users[name];
             if (!user) return;
             document.getElementById('chatUser').innerText = user.name;
             document.getElementById('chatWindow').style.display = 'block';
