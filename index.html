@@ -53,10 +53,19 @@
             let lon = position.coords.longitude;
             currentUser.lat = lat;
             currentUser.lon = lon;
+            updatePin();
+        }
+        
+        function updatePin() {
+            let zoomScale = Math.max(10 - map.getZoom(), 3);
             if (currentUser.marker) {
-                currentUser.marker.setLatLng([lat, lon]);
+                currentUser.marker.setLatLng([currentUser.lat, currentUser.lon]);
+                currentUser.marker.setIcon(L.divIcon({
+                    className: 'custom-pin',
+                    html: `<div style='background:#ffcc00;border-radius:50%;width:${zoomScale * 5}px;height:${zoomScale * 5}px;text-align:center;line-height:${zoomScale * 5}px;'><img src='${currentUser.pic || ''}' width='${zoomScale * 4}px' style='border-radius:50%;'></div>`
+                }));
             } else {
-                currentUser.marker = L.marker([lat, lon], {
+                currentUser.marker = L.marker([currentUser.lat, currentUser.lon], {
                     icon: L.divIcon({
                         className: 'custom-pin',
                         html: `<div style='background:#ffcc00;border-radius:50%;width:50px;height:50px;text-align:center;line-height:50px;'><img src='${currentUser.pic || ''}' width='40' style='border-radius:50%;'></div>`
@@ -65,6 +74,7 @@
             }
         }
         
+        map.on('zoomend', updatePin);
         navigator.geolocation.watchPosition(updateUserLocation);
         
         function saveProfile() {
@@ -75,7 +85,7 @@
                 let reader = new FileReader();
                 reader.onload = function(e) {
                     currentUser.pic = e.target.result;
-                    updateUserLocation({ coords: { latitude: currentUser.lat, longitude: currentUser.lon } });
+                    updatePin();
                 };
                 reader.readAsDataURL(picInput.files[0]);
             }
@@ -93,46 +103,6 @@
                 div.className = 'profile';
                 div.innerHTML = `<b>${user.name}</b><br><img src="${user.pic}" width="50" style="border-radius:50%;"><br>${user.desc}`;
                 profileList.appendChild(div);
-            });
-        }
-        
-        function searchUsers() {
-            let query = document.getElementById('searchUser').value.toLowerCase();
-            let filteredUsers = Object.values(users).filter(u => u.name.toLowerCase().includes(query));
-            let userList = document.getElementById('userList');
-            userList.innerHTML = '';
-            filteredUsers.forEach(user => {
-                let div = document.createElement('div');
-                div.innerText = user.name;
-                div.onclick = () => viewProfile(user.name);
-                userList.appendChild(div);
-            });
-        }
-
-        function viewProfile(name) {
-            let user = users[name];
-            if (!user) return;
-            document.getElementById('chatUser').innerText = user.name;
-            document.getElementById('chatWindow').style.display = 'block';
-            loadChat(user.name);
-        }
-        
-        function sendMessage() {
-            let text = document.getElementById('chatInput').value;
-            let recipient = document.getElementById('chatUser').innerText;
-            if (!messages[recipient]) messages[recipient] = [];
-            messages[recipient].push({ sender: currentUser.name, text });
-            document.getElementById('notification').style.display = 'block';
-            loadChat(recipient);
-        }
-
-        function loadChat(user) {
-            let chatBox = document.getElementById('chatMessages');
-            chatBox.innerHTML = '';
-            (messages[user] || []).forEach(msg => {
-                let div = document.createElement('div');
-                div.innerText = `${msg.sender}: ${msg.text}`;
-                chatBox.appendChild(div);
             });
         }
     </script>
