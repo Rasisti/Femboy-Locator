@@ -7,10 +7,19 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
-        body { display: flex; }
-        #sidebar { width: 300px; padding: 10px; background: #f0f0f0; }
+        body { margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        #sidebar { width: 300px; padding: 10px; background: #f0f0f0; display: flex; flex-direction: column; }
         #map { flex: 1; height: 100vh; }
+        .custom-pin { position: relative; text-align: center; }
         .custom-pin img { border-radius: 50%; }
+        .username-label { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 14px; background: white; padding: 2px 5px; border-radius: 5px; }
+        .message-box { display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
+        .mobile-ui { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 10px; box-shadow: 0 -2px 5px rgba(0,0,0,0.3); transition: transform 0.3s; }
+        .mobile-ui.open { transform: translateY(-75%); }
+        @media (max-width: 768px) { 
+            #sidebar { display: none; } 
+            .mobile-ui { display: block; }
+        }
     </style>
 </head>
 <body>
@@ -19,27 +28,55 @@
         <input type="text" id="username" placeholder="Username"><br>
         <input type="file" id="profilePic" accept="image/*"><br>
         <button onclick="saveProfile()">Save</button>
+        <h3>Search Users</h3>
+        <input type="text" id="searchUser" placeholder="Search..." oninput="searchUsers()">
+        <ul id="userList"></ul>
     </div>
-    <div id="map"></div>
     
+    <div id="map"></div>
+
+    <div class="mobile-ui" id="mobileUI">
+        <h3>Your Profile</h3>
+        <input type="text" id="mobileUsername" placeholder="Username"><br>
+        <input type="file" id="mobileProfilePic" accept="image/*"><br>
+        <button onclick="saveProfile()">Save</button>
+        <h3>Search Users</h3>
+        <input type="text" id="mobileSearchUser" placeholder="Search..." oninput="searchUsers()">
+        <ul id="mobileUserList"></ul>
+        <button onclick="toggleMobileUI()">Close</button>
+    </div>
+
+    <div class="message-box" id="messageBox">
+        <h3>Chat with <span id="chatWith"></span></h3>
+        <div id="messages"></div>
+        <input type="text" id="messageInput" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
     <script>
         let socket = new WebSocket("wss://your-render-app.onrender.com");
         let map = L.map('map').setView([60.1699, 24.9384], 10);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         let markers = {};
         let currentUser = {};
-        
+        let messages = {};
+        let activeChat = null;
+
         socket.onmessage = (event) => {
             let data = JSON.parse(event.data);
             if (data.type === "users") {
                 updateMapPins(data.users);
+            } else if (data.type === "message") {
+                receiveMessage(data);
+            } else if (data.type === "pinClicked") {
+                alert(`${data.username} clicked on your pin!`);
             }
         };
 
         function sendLocationUpdate(lat, lon, pic) {
             socket.send(JSON.stringify({
                 type: "updateLocation",
-                username: document.getElementById("username").value,
+                username: document.getElementById("username").value || document.getElementById("mobileUsername").value,
                 lat,
                 lon,
                 pic,
@@ -58,15 +95,18 @@
                     markers[user] = L.marker([userData.lat, userData.lon], {
                         icon: L.divIcon({
                             className: "custom-pin",
-                            html: `<div style='background:#ffcc00;border-radius:50%;width:${size}px;height:${size}px;text-align:center;line-height:${size}px;'><img src='${userData.pic || ''}' width='${imgSize}px' height='${imgSize}px' style='border-radius:50%;'></div>`
+                            html: `<div class='username-label'>${user}</div>
+                                   <div style='background:#ffcc00;border-radius:50%;width:${size}px;height:${size}px;text-align:center;line-height:${size}px;'>
+                                       <img src='${userData.pic || ''}' width='${imgSize}px' height='${imgSize}px' style='border-radius:50%;'>
+                                   </div>`,
                         }),
-                    }).addTo(map);
+                    }).addTo(map).on('click', () => openProfile(user));
                 }
             }
         }
 
         function saveProfile() {
-            let picInput = document.getElementById('profilePic');
+            let picInput = document.getElementById('profilePic') || document.getElementById('mobileProfilePic');
             if (picInput.files[0]) {
                 let reader = new FileReader();
                 reader.onload = function(e) {
@@ -74,6 +114,51 @@
                 };
                 reader.readAsDataURL(picInput.files[0]);
             }
+        }
+
+        function openProfile(username) {
+            document.getElementById("chatWith").innerText = username;
+            activeChat = username;
+            document.getElementById("messageBox").style.display = "block";
+            socket.send(JSON.stringify({ type: "pinClicked", username }));
+        }
+
+        function sendMessage() {
+            let message = document.getElementById("messageInput").value;
+            if (activeChat && message) {
+                socket.send(JSON.stringify({
+                    type: "message",
+                    from: currentUser.username,
+                    to: activeChat,
+                    message
+                }));
+                document.getElementById("messageInput").value = "";
+            }
+        }
+
+        function receiveMessage(data) {
+            if (data.to === currentUser.username) {
+                alert(`New message from ${data.from}: ${data.message}`);
+            }
+        }
+
+        function searchUsers() {
+            let query = document.getElementById("searchUser").value.toLowerCase() || document.getElementById("mobileSearchUser").value.toLowerCase();
+            let userList = document.getElementById("userList") || document.getElementById("mobileUserList");
+            userList.innerHTML = "";
+
+            Object.keys(markers).forEach(user => {
+                if (user.toLowerCase().includes(query)) {
+                    let li = document.createElement("li");
+                    li.innerText = user;
+                    li.onclick = () => openProfile(user);
+                    userList.appendChild(li);
+                }
+            });
+        }
+
+        function toggleMobileUI() {
+            document.getElementById("mobileUI").classList.toggle("open");
         }
 
         navigator.geolocation.watchPosition((position) => {
