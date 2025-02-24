@@ -1,40 +1,84 @@
-let socket = new WebSocket("wss://your-render-app.onrender.com");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Map Users</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body { display: flex; }
+        #sidebar { width: 300px; padding: 10px; background: #f0f0f0; }
+        #map { flex: 1; height: 100vh; }
+        .custom-pin img { border-radius: 50%; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h3>Your Profile</h3>
+        <input type="text" id="username" placeholder="Username"><br>
+        <input type="file" id="profilePic" accept="image/*"><br>
+        <button onclick="saveProfile()">Save</button>
+    </div>
+    <div id="map"></div>
+    
+    <script>
+        let socket = new WebSocket("wss://your-render-app.onrender.com");
+        let map = L.map('map').setView([60.1699, 24.9384], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let markers = {};
+        let currentUser = {};
+        
+        socket.onmessage = (event) => {
+            let data = JSON.parse(event.data);
+            if (data.type === "users") {
+                updateMapPins(data.users);
+            }
+        };
 
-socket.onmessage = (event) => {
-    let data = JSON.parse(event.data);
+        function sendLocationUpdate(lat, lon, pic) {
+            socket.send(JSON.stringify({
+                type: "updateLocation",
+                username: document.getElementById("username").value,
+                lat,
+                lon,
+                pic,
+            }));
+        }
 
-    if (data.type === "users") {
-        updateMapPins(data.users);
-    }
-};
+        function updateMapPins(users) {
+            for (let user in users) {
+                let userData = users[user];
+                let size = Math.max(10, map.getZoom() * 3);
+                let imgSize = Math.max(5, map.getZoom() * 2);
 
-function sendLocationUpdate(lat, lon, pic) {
-    socket.send(JSON.stringify({
-        type: "updateLocation",
-        username: document.getElementById("username").value,
-        lat,
-        lon,
-        pic,
-    }));
-}
+                if (markers[user]) {
+                    markers[user].setLatLng([userData.lat, userData.lon]);
+                } else {
+                    markers[user] = L.marker([userData.lat, userData.lon], {
+                        icon: L.divIcon({
+                            className: "custom-pin",
+                            html: `<div style='background:#ffcc00;border-radius:50%;width:${size}px;height:${size}px;text-align:center;line-height:${size}px;'><img src='${userData.pic || ''}' width='${imgSize}px' height='${imgSize}px' style='border-radius:50%;'></div>`
+                        }),
+                    }).addTo(map);
+                }
+            }
+        }
 
-function updateMapPins(users) {
-    for (let user in users) {
-        let userData = users[user];
-        let size = Math.max(10, map.getZoom() * 3);
-        let imgSize = Math.max(5, map.getZoom() * 2);
+        function saveProfile() {
+            let picInput = document.getElementById('profilePic');
+            if (picInput.files[0]) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    currentUser.pic = e.target.result;
+                };
+                reader.readAsDataURL(picInput.files[0]);
+            }
+        }
 
-        let marker = L.marker([userData.lat, userData.lon], {
-            icon: L.divIcon({
-                className: "custom-pin",
-                html: `<div style='background:#ffcc00;border-radius:50%;width:${size}px;height:${size}px;text-align:center;line-height:${size}px;'><img src='${userData.pic || ''}' width='${imgSize}px' height='${imgSize}px' style='border-radius:50%;'></div>`
-            }),
+        navigator.geolocation.watchPosition((position) => {
+            sendLocationUpdate(position.coords.latitude, position.coords.longitude, currentUser.pic);
         });
-
-        marker.addTo(map);
-    }
-}
-
-navigator.geolocation.watchPosition((position) => {
-    sendLocationUpdate(position.coords.latitude, position.coords.longitude, currentUser.pic);
-});
+    </script>
+</body>
+</html>
