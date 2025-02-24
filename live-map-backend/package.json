@@ -1,0 +1,12 @@
+{
+  "name": "live-map-backend",
+  "version": "1.0.0",
+  "description": "WebSocket backend for live map application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.0.0"
+  }
+}
