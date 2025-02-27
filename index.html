@@ -14,7 +14,7 @@
     #map {
       height: 100vh;
       width: 100%;
-      margin-top: 60px; /* This ensures the map doesn't overlap with the top text */
+      margin-top: 60px;
     }
     .header {
       position: fixed;
@@ -40,28 +40,26 @@
 </head>
 <body>
 
-  <!-- Top Header with the link and description -->
   <div class="header">
     <p><a href="https://rasisti.github.io/Femboy-Locator/" target="_blank">https://rasisti.github.io/Femboy-Locator/</a></p>
     <p class="description">Femboy Locator is a website for femboys to find femboys. Go visit it!</p>
   </div>
 
-  <!-- Map container -->
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <script>
-    // Initialize the map
     const map = L.map('map').setView([0, 0], 2); // Default center and zoom level
 
-    // Load and display the tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
     let userMarker;
+    const socket = io();  // Connect to the WebSocket server
 
-    // Function to update the user's position on the map
+    // Function to update the user's location on the map
     function updateUserLocation(lat, lon) {
       if (!userMarker) {
         userMarker = L.marker([lat, lon]).addTo(map);
@@ -71,6 +69,11 @@
       map.setView([lat, lon], 15); // Adjust map view to zoom in on the user
     }
 
+    // Broadcast location to the backend and other users
+    function broadcastLocation(lat, lon) {
+      socket.emit('location', { lat, lon });
+    }
+
     // Get user's current position with high accuracy
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(
@@ -78,19 +81,28 @@
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
           updateUserLocation(lat, lon);
+          broadcastLocation(lat, lon); // Send location to backend
         },
         function (error) {
           console.error('Error getting location', error);
         },
         {
-          enableHighAccuracy: true,  // Request for the most accurate location
-          maximumAge: 0,             // Don't use cached position
-          timeout: 5000              // Wait for a maximum of 5 seconds for a location
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 5000
         }
       );
     } else {
       alert('Geolocation is not supported by this browser.');
     }
+
+    // Listen for other users' locations from the server
+    socket.on('location', (data) => {
+      console.log('Received location data: ', data);
+      const { lat, lon } = data;
+      // Place a marker for the other user
+      L.marker([lat, lon]).addTo(map);
+    });
   </script>
 
 </body>
