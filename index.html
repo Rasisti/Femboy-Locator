@@ -4,208 +4,86 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Femboy Locator</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body, html {
+    body {
       margin: 0;
       padding: 0;
-      height: 100%;
+      font-family: Arial, sans-serif;
     }
-
     #map {
       height: 100vh;
       width: 100%;
-      display: none; /* Hide the map initially */
     }
-
-    .popup img {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-    }
-
-    #profileUpload {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      position: fixed;
-      top: 0;
-      left: 0;
+    .footer {
+      position: absolute;
+      bottom: 0;
       width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      z-index: 10;
-      overflow: hidden;
+      background-color: white;
+      text-align: center;
+      padding: 10px 0;
+      font-size: 18px;
+      color: black;
     }
-
-    #profileUpload input {
-      margin: 10px 0;
-      padding: 10px;
-      border-radius: 5px;
-      border: none;
-      width: 80%;
-      max-width: 300px;
+    .footer a {
+      color: black;
+      text-decoration: none;
     }
-
-    #profileUpload button {
-      padding: 10px 20px;
-      background-color: #008CBA;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    #profileUpload button:hover {
-      background-color: #005f73;
-    }
-
-    /* Make the profile upload form responsive for mobile */
-    @media (max-width: 600px) {
-      #profileUpload input {
-        width: 90%;
-      }
-
-      #profileUpload button {
-        width: 90%;
-      }
+    .footer .description {
+      font-size: 14px;
+      color: black;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
-  <!-- Upload profile image before accessing the map -->
-  <div id="profileUpload">
-    <h2>Please Upload Your Profile Picture</h2>
-    <input type="file" id="imageUpload" accept="image/*">
-    <button onclick="startMap()">Start</button>
-  </div>
 
   <div id="map"></div>
 
+  <div class="footer">
+    <p><a href="https://rasisti.github.io/Femboy-Locator/" target="_blank">https://rasisti.github.io/Femboy-Locator/</a></p>
+    <p class="description">Femboy Locator is a website for femboys to find femboys. Go visit it!</p>
+  </div>
+
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    let users = JSON.parse(localStorage.getItem('users')) || {};
-    let profileImage = localStorage.getItem('profileImage') || 'https://via.placeholder.com/50'; // Default image
-    const userId = localStorage.getItem('userId') || generateUserId();
+    // Initialize the map
+    const map = L.map('map').setView([0, 0], 2); // Default center and zoom level
 
-    // If there's no profile image, show the profile upload screen
-    if (!localStorage.getItem('profileImage')) {
-      document.getElementById('profileUpload').style.display = 'flex'; 
-    }
-
-    // Create the map (with default center to middle of the world or a central location)
-    const map = L.map('map', {
-      center: [0, 0], // Default center (middle of the world)
-      zoom: 2, // Zoomed out a bit to see the entire world
-      preferCanvas: true // Helps with rendering performance
-    });
-
-    // Add a tile layer to the map
+    // Load and display the tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      minZoom: 1,
-      maxZoom: 19,
-      noWrap: true // Prevents tiles from wrapping when zooming out
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // Start watching geolocation after image upload
-    function startMap() {
-      document.getElementById('profileUpload').style.display = 'none'; // Hide the upload prompt
-      document.getElementById('map').style.display = 'block'; // Show the map
+    let userMarker;
 
-      localStorage.setItem('userId', userId); // Ensure the userId is stored
-      localStorage.setItem('profileImage', profileImage); // Save the user's image
-
-      // Force a map resize to correct dimensions
-      map.invalidateSize();
-
-      // Watch for geolocation updates
-      navigator.geolocation.watchPosition((pos) => {
-        const { latitude, longitude } = pos.coords;
-        if (!users[userId]) {
-          users[userId] = { lat: latitude, lng: longitude, img: profileImage };
-          saveUsersToLocalStorage();
-        }
-
-        // Update the user's position on the map
-        updateUserMarker(userId, latitude, longitude);
-
-        // Update map view to user's location
-        map.setView([latitude, longitude], 13);
-      });
-    }
-
-    // Generate a unique user ID
-    function generateUserId() {
-      return Math.random().toString(36).substring(7);
-    }
-
-    // Save users data to localStorage
-    function saveUsersToLocalStorage() {
-      localStorage.setItem('users', JSON.stringify(users));
-    }
-
-    // Add or update user marker on the map
-    function updateUserMarker(userId, lat, lng) {
-      if (users[userId].marker) {
-        users[userId].marker.setLatLng([lat, lng]);
+    // Function to update the user's position on the map
+    function updateUserLocation(lat, lon) {
+      if (!userMarker) {
+        userMarker = L.marker([lat, lon]).addTo(map);
       } else {
-        const marker = L.marker([lat, lng]).addTo(map);
-        marker.bindPopup(`<img src="${users[userId].img}" alt="Avatar" class="popup"><p>${userId}</p>`);
-        users[userId].marker = marker;
+        userMarker.setLatLng([lat, lon]);
       }
+      map.setView([lat, lon], 15); // Adjust map view to zoom in on the user
     }
 
-    // Render all users from localStorage
-    Object.entries(users).forEach(([userId, user]) => {
-      updateUserMarker(userId, user.lat, user.lng);
-    });
-
-    // Handle profile picture upload and resize it to 200px
-    document.getElementById('imageUpload').addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onloadend = function () {
-          const img = new Image();
-          img.onload = function() {
-            // Create a canvas to resize the image
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const MAX_SIZE = 200; // Resize to 200px
-            let width = img.width;
-            let height = img.height;
-
-            // Maintain aspect ratio
-            if (width > height) {
-              if (width > MAX_SIZE) {
-                height = Math.round(height * (MAX_SIZE / width));
-                width = MAX_SIZE;
-              }
-            } else {
-              if (height > MAX_SIZE) {
-                width = Math.round(width * (MAX_SIZE / height));
-                height = MAX_SIZE;
-              }
-            }
-
-            // Set the canvas size and draw the image
-            canvas.width = width;
-            canvas.height = height;
-            ctx.drawImage(img, 0, 0, width, height);
-
-            // Get the resized image as a data URL
-            const resizedImage = canvas.toDataURL('image/jpeg');
-            profileImage = resizedImage;  // Save the resized image
-            localStorage.setItem('profileImage', profileImage); // Save the image URL to localStorage
-          };
-          img.src = reader.result; // Set the image source to the uploaded file's Data URL
-        };
-        reader.readAsDataURL(file); // Read the image file as a Data URL
-      }
-    });
+    // Get user's current position
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        function (position) {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          updateUserLocation(lat, lon);
+        },
+        function (error) {
+          console.error('Error getting location', error);
+        },
+        { enableHighAccuracy: true }
+      );
+    } else {
+      alert('Geolocation is not supported by this browser.');
+    }
   </script>
+
 </body>
 </html>
