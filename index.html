@@ -6,6 +6,12 @@
   <title>Femboy Locator</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
   <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
     #map {
       height: 100vh;
       width: 100%;
@@ -30,11 +36,41 @@
       height: 100%;
       background: rgba(0, 0, 0, 0.8);
       color: white;
-      z-index: 10; /* Ensure it's above the map */
+      z-index: 10;
+      overflow: hidden;
     }
 
     #profileUpload input {
       margin: 10px 0;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+      width: 80%;
+      max-width: 300px;
+    }
+
+    #profileUpload button {
+      padding: 10px 20px;
+      background-color: #008CBA;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #profileUpload button:hover {
+      background-color: #005f73;
+    }
+
+    /* Make the profile upload form responsive for mobile */
+    @media (max-width: 600px) {
+      #profileUpload input {
+        width: 90%;
+      }
+
+      #profileUpload button {
+        width: 90%;
+      }
     }
   </style>
 </head>
@@ -60,11 +96,17 @@
     }
 
     // Create the map
-    const map = L.map('map').setView([51.505, -0.09], 13); // Default center (London)
+    const map = L.map('map', {
+      center: [51.505, -0.09], // Default center (London)
+      zoom: 13,
+      preferCanvas: true // Helps with rendering performance
+    });
 
     // Add a tile layer to the map
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      minZoom: 1,
+      maxZoom: 19
     }).addTo(map);
 
     // Start watching geolocation after image upload
