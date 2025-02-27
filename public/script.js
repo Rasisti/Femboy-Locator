@@ -1,5 +1,3 @@
-// script.js
-
 const map = L.map('map').setView([0, 0], 2); // Default center and zoom level
 
 // Load OpenStreetMap tile layer
@@ -8,31 +6,18 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 let userMarker;
-let lastKnownPosition = { lat: null, lon: null }; // Store the last known position
+let userMarkers = {}; // Store markers for other users by their socket ID
 
 const socket = io();  // Connect to the WebSocket server
 
-// Store markers for other users by their socket ID
-let userMarkers = {};
-
 // Function to update the user's location on the map
 function updateUserLocation(lat, lon) {
-  // Only update if the location has changed (or is significantly different)
-  if (lat !== lastKnownPosition.lat || lon !== lastKnownPosition.lon) {
-    // If marker exists, remove it
-    if (userMarker) {
-      map.removeLayer(userMarker); // Remove the old marker
-    }
-
-    // Create a new marker at the new location
+  if (!userMarker) {
     userMarker = L.marker([lat, lon]).addTo(map);
-
-    // Adjust map view to zoom in on the user
-    map.setView([lat, lon], 15); // Adjust map view to zoom in on the user
-
-    // Update the last known position
-    lastKnownPosition = { lat, lon };
+  } else {
+    userMarker.setLatLng([lat, lon]);
   }
+  map.setView([lat, lon], 15); // Adjust map view to zoom in on the user
 }
 
 // Broadcast location to the backend and other users
@@ -51,12 +36,11 @@ if (navigator.geolocation) {
     },
     function (error) {
       console.error('Error getting location', error);
-      alert('Location accuracy is low. Please allow high accuracy in your browser settings.');
     },
     {
-      enableHighAccuracy: true,   // Request high accuracy
-      maximumAge: 0,              // No cached location allowed
-      timeout: 10000              // Timeout after 10 seconds
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 5000
     }
   );
 } else {
@@ -71,9 +55,8 @@ socket.on('location', (data) => {
   if (!userMarkers[id]) {
     userMarkers[id] = L.marker([lat, lon]).addTo(map);
   } else {
-    // If marker exists, just update the position (remove and create a new one)
-    map.removeLayer(userMarkers[id]); // Remove old marker
-    userMarkers[id] = L.marker([lat, lon]).addTo(map); // Add new marker
+    // If marker exists, update position
+    userMarkers[id].setLatLng([lat, lon]);
   }
 });
 
@@ -81,16 +64,16 @@ socket.on('location', (data) => {
 socket.on('allLocations', (users) => {
   for (const id in users) {
     const { lat, lon } = users[id];
-    // Create a marker for each connected user
-    userMarkers[id] = L.marker([lat, lon]).addTo(map);
+    if (!userMarkers[id]) {
+      userMarkers[id] = L.marker([lat, lon]).addTo(map);
+    }
   }
 });
 
 // Listen for when a user disconnects
 socket.on('removeMarker', (id) => {
-  // If a user disconnects, remove their marker from the map
   if (userMarkers[id]) {
     map.removeLayer(userMarkers[id]);
-    delete userMarkers[id];  // Delete from the userMarkers object
+    delete userMarkers[id];
   }
 });
