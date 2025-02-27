@@ -23,6 +23,7 @@ function updateUserLocation(lat, lon) {
     userMarker.setLatLng([lat, lon]);
   }
 
+  // Adjust map view only when the user moves significantly
   map.setView([lat, lon], 15); // Adjust map view to zoom in on the user
 }
 
@@ -42,11 +43,12 @@ if (navigator.geolocation) {
     },
     function (error) {
       console.error('Error getting location', error);
+      alert('Location accuracy is low. Please allow high accuracy in your browser settings.');
     },
     {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 5000
+      enableHighAccuracy: true,   // Request high accuracy
+      maximumAge: 0,              // No cached location allowed
+      timeout: 10000              // Timeout after 10 seconds
     }
   );
 } else {
