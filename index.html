@@ -1,77 +1,86 @@
-import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-
-const FemboyLocator = () => {
-  const [position, setPosition] = useState(null);
-  const [users, setUsers] = useState({});
-  const userId = useState(() => {
-    // Load the user ID from localStorage or generate a new one if it doesn't exist
-    const savedUserId = localStorage.getItem("userId");
-    if (savedUserId) {
-      return savedUserId;
-    } else {
-      const newUserId = Math.random().toString(36).substring(7);
-      localStorage.setItem("userId", newUserId);
-      return newUserId;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Femboy Locator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
     }
-  })[0];
+    .popup img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
 
-  const profileImage = "https://via.placeholder.com/50"; // Placeholder avatar
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const users = JSON.parse(localStorage.getItem('users')) || {};
+    const profileImage = 'https://via.placeholder.com/50'; // Placeholder avatar
 
-  useEffect(() => {
+    // Create the map
+    const map = L.map('map').setView([51.505, -0.09], 13); // Default center (London)
+
+    // Add a tile layer to the map
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Watch geolocation
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
+      alert('Geolocation is not supported by your browser');
+    } else {
+      navigator.geolocation.watchPosition((pos) => {
+        const { latitude, longitude } = pos.coords;
+        const userId = localStorage.getItem('userId') || generateUserId();
+        localStorage.setItem('userId', userId);
+
+        // Set the user's position
+        if (!users[userId]) {
+          users[userId] = { lat: latitude, lng: longitude, img: profileImage };
+          saveUsersToLocalStorage();
+        }
+
+        // Update the user's position on the map
+        updateUserMarker(userId, latitude, longitude);
+
+        // Update map view to user's location
+        map.setView([latitude, longitude], 13);
+      });
     }
 
-    const updatePosition = (pos) => {
-      const { latitude, longitude } = pos.coords;
-      setPosition([latitude, longitude]);
-      sendUserLocation(userId, latitude, longitude, profileImage);
-    };
+    // Generate a unique user ID
+    function generateUserId() {
+      return Math.random().toString(36).substring(7);
+    }
 
-    const watcher = navigator.geolocation.watchPosition(updatePosition);
-    return () => navigator.geolocation.clearWatch(watcher);
-  }, [userId]);
+    // Save users data to localStorage
+    function saveUsersToLocalStorage() {
+      localStorage.setItem('users', JSON.stringify(users));
+    }
 
-  const sendUserLocation = (id, lat, lng, img) => {
-    setUsers((prevUsers) => {
-      const updatedUsers = { ...prevUsers, [id]: { lat, lng, img } };
+    // Add or update user marker on the map
+    function updateUserMarker(userId, lat, lng) {
+      if (users[userId].marker) {
+        users[userId].marker.setLatLng([lat, lng]);
+      } else {
+        const marker = L.marker([lat, lng]).addTo(map);
+        marker.bindPopup(`<img src="${users[userId].img}" alt="Avatar" class="popup"><p>${userId}</p>`);
+        users[userId].marker = marker;
+      }
+    }
 
-      // Persist updated users list in localStorage
-      localStorage.setItem("users", JSON.stringify(updatedUsers));
-
-      return updatedUsers;
+    // Render all users from localStorage
+    Object.entries(users).forEach(([userId, user]) => {
+      updateUserMarker(userId, user.lat, user.lng);
     });
-  };
-
-  // Load users from localStorage on page load
-  useEffect(() => {
-    const savedUsers = localStorage.getItem("users");
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
-    }
-  }, []);
-
-  return (
-    <div className="h-screen w-full">
-      {position && (
-        <MapContainer center={position} zoom={13} className="h-full w-full">
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          {Object.entries(users).map(([id, user]) => (
-            <Marker key={id} position={[user.lat, user.lng]}>
-              <Popup>
-                <img src={user.img} alt="Avatar" className="w-12 h-12 rounded-full" />
-                <p>{id}</p>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-      )}
-    </div>
-  );
-};
-
-export default FemboyLocator;
+  </script>
+</body>
+</html>
