@@ -15,34 +15,53 @@
       height: 50px;
       border-radius: 50%;
     }
+    #profileUpload {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+    }
+    #profileUpload input {
+      margin: 10px 0;
+    }
   </style>
 </head>
 <body>
+  <!-- Upload profile image before accessing the map -->
+  <div id="profileUpload">
+    <h2>Please Upload Your Profile Picture</h2>
+    <input type="file" id="imageUpload" accept="image/*">
+    <button onclick="startMap()">Start</button>
+  </div>
+
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const users = JSON.parse(localStorage.getItem('users')) || {};
-    const profileImage = 'https://via.placeholder.com/50'; // Placeholder avatar
-
-    // Create the map
+    let users = JSON.parse(localStorage.getItem('users')) || {};
+    const profileImage = localStorage.getItem('profileImage') || 'https://via.placeholder.com/50'; // Default image
+    const userId = localStorage.getItem('userId') || generateUserId();
     const map = L.map('map').setView([51.505, -0.09], 13); // Default center (London)
 
-    // Add a tile layer to the map
+    // Create the map with a tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // Watch geolocation
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
-    } else {
+    // Start watching geolocation after image upload
+    function startMap() {
+      document.getElementById('profileUpload').style.display = 'none'; // Hide the upload prompt
+      localStorage.setItem('userId', userId); // Ensure the userId is stored
+      localStorage.setItem('profileImage', profileImage); // Save the user's image
       navigator.geolocation.watchPosition((pos) => {
         const { latitude, longitude } = pos.coords;
-        const userId = localStorage.getItem('userId') || generateUserId();
-        localStorage.setItem('userId', userId);
-
-        // Set the user's position
         if (!users[userId]) {
           users[userId] = { lat: latitude, lng: longitude, img: profileImage };
           saveUsersToLocalStorage();
@@ -80,6 +99,19 @@
     // Render all users from localStorage
     Object.entries(users).forEach(([userId, user]) => {
       updateUserMarker(userId, user.lat, user.lng);
+    });
+
+    // Handle profile picture upload
+    document.getElementById('imageUpload').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = function () {
+          profileImage = reader.result;
+          localStorage.setItem('profileImage', profileImage); // Save the image URL to localStorage
+        };
+        reader.readAsDataURL(file); // Read the image file as a Data URL
+      }
     });
   </script>
 </body>
