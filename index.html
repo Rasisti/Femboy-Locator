@@ -95,10 +95,10 @@
       document.getElementById('profileUpload').style.display = 'flex'; 
     }
 
-    // Create the map
+    // Create the map (with default center to middle of the world or a central location)
     const map = L.map('map', {
-      center: [51.505, -0.09], // Default center (London)
-      zoom: 13,
+      center: [0, 0], // Default center (middle of the world)
+      zoom: 2, // Zoomed out a bit to see the entire world
       preferCanvas: true // Helps with rendering performance
     });
 
@@ -106,7 +106,8 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       minZoom: 1,
-      maxZoom: 19
+      maxZoom: 19,
+      noWrap: true // Prevents tiles from wrapping when zooming out
     }).addTo(map);
 
     // Start watching geolocation after image upload
@@ -116,6 +117,9 @@
 
       localStorage.setItem('userId', userId); // Ensure the userId is stored
       localStorage.setItem('profileImage', profileImage); // Save the user's image
+
+      // Force a map resize to correct dimensions
+      map.invalidateSize();
 
       // Watch for geolocation updates
       navigator.geolocation.watchPosition((pos) => {
