@@ -16,7 +16,7 @@
       border-radius: 50%;
     }
     #profileUpload {
-      display: none;
+      display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
@@ -46,11 +46,18 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     let users = JSON.parse(localStorage.getItem('users')) || {};
-    const profileImage = localStorage.getItem('profileImage') || 'https://via.placeholder.com/50'; // Default image
+    let profileImage = localStorage.getItem('profileImage') || 'https://via.placeholder.com/50'; // Default image
     const userId = localStorage.getItem('userId') || generateUserId();
+
+    // If there's no profile image, show the profile upload screen
+    if (!localStorage.getItem('profileImage')) {
+      document.getElementById('profileUpload').style.display = 'flex'; 
+    }
+
+    // Create the map
     const map = L.map('map').setView([51.505, -0.09], 13); // Default center (London)
 
-    // Create the map with a tile layer
+    // Add a tile layer to the map
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
@@ -60,6 +67,8 @@
       document.getElementById('profileUpload').style.display = 'none'; // Hide the upload prompt
       localStorage.setItem('userId', userId); // Ensure the userId is stored
       localStorage.setItem('profileImage', profileImage); // Save the user's image
+
+      // Watch for geolocation updates
       navigator.geolocation.watchPosition((pos) => {
         const { latitude, longitude } = pos.coords;
         if (!users[userId]) {
@@ -107,7 +116,7 @@
       if (file) {
         const reader = new FileReader();
         reader.onloadend = function () {
-          profileImage = reader.result;
+          profileImage = reader.result;  // Store the image in a Data URL format
           localStorage.setItem('profileImage', profileImage); // Save the image URL to localStorage
         };
         reader.readAsDataURL(file); // Read the image file as a Data URL
