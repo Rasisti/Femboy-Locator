@@ -1,0 +1,21 @@
+{
+  "name": "femboy-locator",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-leaflet": "^3.2.1",
+    "leaflet": "^1.7.1",
+    "react-scripts": "4.0.3"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build", // Build the app before deployment
+    "deploy": "gh-pages -d build" // Deploy to gh-pages
+  },
+  "homepage": https://rasisti.github.io/Femboy-Locator/"
+}
