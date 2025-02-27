@@ -15,15 +15,15 @@ let userMarkers = {};
 
 // Function to update the user's location on the map
 function updateUserLocation(lat, lon) {
-  if (!userMarker) {
-    // If marker doesn't exist, create a new one
-    userMarker = L.marker([lat, lon]).addTo(map);
-  } else {
-    // If marker exists, just update the position
-    userMarker.setLatLng([lat, lon]);
+  // If marker exists, remove it
+  if (userMarker) {
+    map.removeLayer(userMarker); // Remove the old marker
   }
 
-  // Adjust map view only when the user moves significantly
+  // Create a new marker at the new location
+  userMarker = L.marker([lat, lon]).addTo(map);
+
+  // Adjust map view to zoom in on the user
   map.setView([lat, lon], 15); // Adjust map view to zoom in on the user
 }
 
@@ -63,8 +63,9 @@ socket.on('location', (data) => {
   if (!userMarkers[id]) {
     userMarkers[id] = L.marker([lat, lon]).addTo(map);
   } else {
-    // If marker exists, just update the position
-    userMarkers[id].setLatLng([lat, lon]);
+    // If marker exists, just update the position (remove and create a new one)
+    map.removeLayer(userMarkers[id]); // Remove old marker
+    userMarkers[id] = L.marker([lat, lon]).addTo(map); // Add new marker
   }
 });
 
@@ -82,6 +83,6 @@ socket.on('removeMarker', (id) => {
   // If a user disconnects, remove their marker from the map
   if (userMarkers[id]) {
     map.removeLayer(userMarkers[id]);
-    delete userMarkers[id];
+    delete userMarkers[id];  // Delete from the userMarkers object
   }
 });
