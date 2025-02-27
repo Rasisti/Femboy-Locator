@@ -9,12 +9,15 @@
     #map {
       height: 100vh;
       width: 100%;
+      display: none; /* Hide the map initially */
     }
+
     .popup img {
       width: 50px;
       height: 50px;
       border-radius: 50%;
     }
+
     #profileUpload {
       display: flex;
       flex-direction: column;
@@ -27,7 +30,9 @@
       height: 100%;
       background: rgba(0, 0, 0, 0.8);
       color: white;
+      z-index: 10; /* Ensure it's above the map */
     }
+
     #profileUpload input {
       margin: 10px 0;
     }
@@ -65,6 +70,8 @@
     // Start watching geolocation after image upload
     function startMap() {
       document.getElementById('profileUpload').style.display = 'none'; // Hide the upload prompt
+      document.getElementById('map').style.display = 'block'; // Show the map
+
       localStorage.setItem('userId', userId); // Ensure the userId is stored
       localStorage.setItem('profileImage', profileImage); // Save the user's image
 
