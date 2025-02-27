@@ -163,14 +163,45 @@
       updateUserMarker(userId, user.lat, user.lng);
     });
 
-    // Handle profile picture upload
+    // Handle profile picture upload and resize it to 200px
     document.getElementById('imageUpload').addEventListener('change', function (e) {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
         reader.onloadend = function () {
-          profileImage = reader.result;  // Store the image in a Data URL format
-          localStorage.setItem('profileImage', profileImage); // Save the image URL to localStorage
+          const img = new Image();
+          img.onload = function() {
+            // Create a canvas to resize the image
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const MAX_SIZE = 200; // Resize to 200px
+            let width = img.width;
+            let height = img.height;
+
+            // Maintain aspect ratio
+            if (width > height) {
+              if (width > MAX_SIZE) {
+                height = Math.round(height * (MAX_SIZE / width));
+                width = MAX_SIZE;
+              }
+            } else {
+              if (height > MAX_SIZE) {
+                width = Math.round(width * (MAX_SIZE / height));
+                height = MAX_SIZE;
+              }
+            }
+
+            // Set the canvas size and draw the image
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Get the resized image as a data URL
+            const resizedImage = canvas.toDataURL('image/jpeg');
+            profileImage = resizedImage;  // Save the resized image
+            localStorage.setItem('profileImage', profileImage); // Save the image URL to localStorage
+          };
+          img.src = reader.result; // Set the image source to the uploaded file's Data URL
         };
         reader.readAsDataURL(file); // Read the image file as a Data URL
       }
