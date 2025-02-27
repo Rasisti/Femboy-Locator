@@ -10,6 +10,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let userMarker;
 const socket = io();  // Connect to the WebSocket server
 
+// Store markers for other users by their socket ID
+let userMarkers = {};
+
 // Function to update the user's location on the map
 function updateUserLocation(lat, lon) {
   if (!userMarker) {
@@ -52,9 +55,31 @@ if (navigator.geolocation) {
 
 // Listen for other users' locations from the server
 socket.on('location', (data) => {
-  console.log('Received location data: ', data);
-  const { lat, lon } = data;
+  const { id, lat, lon } = data;
+  
+  // If marker doesn't exist for this user, create one
+  if (!userMarkers[id]) {
+    userMarkers[id] = L.marker([lat, lon]).addTo(map);
+  } else {
+    // If marker exists, just update the position
+    userMarkers[id].setLatLng([lat, lon]);
+  }
+});
 
-  // Place a marker for the other user
-  L.marker([lat, lon]).addTo(map);
+// Listen for the initial location of all users when a new user connects
+socket.on('allLocations', (users) => {
+  for (const id in users) {
+    const { lat, lon } = users[id];
+    // Create a marker for each connected user
+    userMarkers[id] = L.marker([lat, lon]).addTo(map);
+  }
+});
+
+// Listen for when a user disconnects
+socket.on('removeMarker', (id) => {
+  // If a user disconnects, remove their marker from the map
+  if (userMarkers[id]) {
+    map.removeLayer(userMarkers[id]);
+    delete userMarkers[id];
+  }
 });
