@@ -6,7 +6,18 @@ import L from "leaflet";
 const FemboyLocator = () => {
   const [position, setPosition] = useState(null);
   const [users, setUsers] = useState({});
-  const userId = useState(() => Math.random().toString(36).substring(7))[0];
+  const userId = useState(() => {
+    // Load the user ID from localStorage or generate a new one if it doesn't exist
+    const savedUserId = localStorage.getItem("userId");
+    if (savedUserId) {
+      return savedUserId;
+    } else {
+      const newUserId = Math.random().toString(36).substring(7);
+      localStorage.setItem("userId", newUserId);
+      return newUserId;
+    }
+  })[0];
+
   const profileImage = "https://via.placeholder.com/50"; // Placeholder avatar
 
   useEffect(() => {
@@ -26,8 +37,23 @@ const FemboyLocator = () => {
   }, [userId]);
 
   const sendUserLocation = (id, lat, lng, img) => {
-    setUsers((prevUsers) => ({ ...prevUsers, [id]: { lat, lng, img } }));
+    setUsers((prevUsers) => {
+      const updatedUsers = { ...prevUsers, [id]: { lat, lng, img } };
+
+      // Persist updated users list in localStorage
+      localStorage.setItem("users", JSON.stringify(updatedUsers));
+
+      return updatedUsers;
+    });
   };
+
+  // Load users from localStorage on page load
+  useEffect(() => {
+    const savedUsers = localStorage.getItem("users");
+    if (savedUsers) {
+      setUsers(JSON.parse(savedUsers));
+    }
+  }, []);
 
   return (
     <div className="h-screen w-full">
